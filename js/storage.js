@@ -1,0 +1,206 @@
+/**
+ * FlashMind - LocalStorage & Data Management
+ * Handles persistence for decks, card mastery, score, and user decks.
+ */
+
+const STORAGE_KEYS = {
+  DECKS: 'flashmind_decks_v2', // v2 to clear legacy decks
+  PROGRESS: 'flashmind_progress_v2',
+  STATS: 'flashmind_stats_v2',
+  SETTINGS: 'flashmind_settings_v2'
+};
+
+class StorageManager {
+  constructor() {
+    this.decks = this.loadDecks();
+    this.progress = this.loadProgress();
+    this.stats = this.loadStats();
+    this.settings = this.loadSettings();
+  }
+
+  loadDecks() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.DECKS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Verify it doesn't contain legacy decks
+          if (!parsed.some(d => d.id === 'cs-web-dev')) {
+            return parsed;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load decks from localStorage, using defaults:', e);
+    }
+    // Clean reset to new DEFAULT_DECKS
+    this.saveDecks(DEFAULT_DECKS);
+    return JSON.parse(JSON.stringify(DEFAULT_DECKS));
+  }
+
+  saveDecks(decks) {
+    this.decks = decks;
+    try {
+      localStorage.setItem(STORAGE_KEYS.DECKS, JSON.stringify(decks));
+    } catch (e) {
+      console.error('Failed to save decks to localStorage:', e);
+    }
+  }
+
+  loadProgress() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PROGRESS);
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  saveProgress(progress) {
+    this.progress = progress;
+    try {
+      localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(progress));
+    } catch (e) {
+      console.error('Failed to save progress:', e);
+    }
+  }
+
+  setCardMastery(cardId, isMastered) {
+    this.progress[cardId] = {
+      mastered: !!isMastered,
+      timestamp: Date.now()
+    };
+    this.saveProgress(this.progress);
+  }
+
+  isCardMastered(cardId) {
+    return !!this.progress[cardId]?.mastered;
+  }
+
+  loadStats() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.STATS);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+
+    return {
+      score: 0,
+      totalAnswered: 0,
+      totalCorrect: 0
+    };
+  }
+
+  saveStats(stats) {
+    this.stats = stats;
+    try {
+      localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(stats));
+    } catch (e) {}
+  }
+
+  addScore(points) {
+    this.stats.score = Math.max(0, (this.stats.score || 0) + points);
+    this.saveStats(this.stats);
+    return this.stats.score;
+  }
+
+  getScore() {
+    return this.stats.score || 0;
+  }
+
+  resetScore() {
+    this.stats.score = 0;
+    this.saveStats(this.stats);
+    return 0;
+  }
+
+  loadSettings() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return {
+      shuffle: true
+    };
+  }
+
+  saveSettings(settings) {
+    this.settings = settings;
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    } catch (e) {}
+  }
+
+  getDeckById(id) {
+    return this.decks.find(d => d.id === id) || null;
+  }
+
+  saveDeck(deck) {
+    const index = this.decks.findIndex(d => d.id === deck.id);
+    if (index >= 0) {
+      this.decks[index] = deck;
+    } else {
+      this.decks.push(deck);
+    }
+    this.saveDecks(this.decks);
+    return deck;
+  }
+
+  deleteDeck(deckId) {
+    this.decks = this.decks.filter(d => d.id !== deckId);
+    this.saveDecks(this.decks);
+  }
+
+  getDeckMasteredCount(deckId) {
+    const deck = this.getDeckById(deckId);
+    if (!deck || !deck.cards) return { mastered: 0, total: 0 };
+    let mastered = 0;
+    deck.cards.forEach(c => {
+      if (this.isCardMastered(c.id)) mastered++;
+    });
+    return { mastered, total: deck.cards.length };
+  }
+
+  exportAllDecksJSON() {
+    const exportData = {
+      version: "2.0",
+      exportDate: new Date().toISOString(),
+      decks: this.decks
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `flashcard-study-decks.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  }
+
+  importDecksJSON(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      const incomingDecks = Array.isArray(data) ? data : data.decks;
+      if (!Array.isArray(incomingDecks)) {
+        throw new Error('Invalid JSON: expected array of decks');
+      }
+
+      incomingDecks.forEach(newDeck => {
+        if (!newDeck.id) {
+          newDeck.id = 'deck-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+        }
+        const existingIdx = this.decks.findIndex(d => d.id === newDeck.id);
+        if (existingIdx >= 0) {
+          this.decks[existingIdx] = newDeck;
+        } else {
+          this.decks.push(newDeck);
+        }
+      });
+
+      this.saveDecks(this.decks);
+      return { success: true, count: incomingDecks.length };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+}
+
+const storage = new StorageManager();
