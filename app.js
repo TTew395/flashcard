@@ -72,9 +72,7 @@ class FlashcardStudyApp {
       this.shuffleCheckbox.checked = settings.shuffle;
     }
 
-    // Default to AP Chemistry: Polyatomic Ions (from screenshot)
-    const polyatomicDeck = storage.getDeckById('ap-chem-polyatomic') || storage.decks[0];
-    this.loadDeckForStudy(polyatomicDeck);
+
   }
 
   loadDeckForStudy(deck) {
