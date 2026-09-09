@@ -1,5 +1,5 @@
 const STORAGE_KEYS = {
-  DECKS: 'flashmind_decks_v6', // Bumped version to invalidate old cache
+  DECKS: 'flashmind_decks_v6',
   PROGRESS: 'flashmind_progress_v2',
   STATS: 'flashmind_stats_v2',
   SETTINGS: 'flashmind_settings_v2'
@@ -7,7 +7,7 @@ const STORAGE_KEYS = {
 
 class StorageManager {
   constructor() {
-    this.decks = []; // Populated during init()
+    this.decks = [];
     this.progress = this.loadProgress();
     this.stats = this.loadStats();
     this.settings = this.loadSettings();
@@ -23,10 +23,9 @@ class StorageManager {
         console.warn('Failed to load data.json. Status:', response.status);
       }
     } catch (e) {
-      console.warn('Failed to fetch data.json. (Are you running via file:// instead of a local server?):', e);
+      console.warn('Failed to fetch data.json:', e);
     }
     
-    // Process and merge the fetched data
     this.decks = this.loadDecks(defaults);
   }
 
@@ -41,9 +40,7 @@ class StorageManager {
           loadedDecks = parsed;
         }
       }
-    } catch (e) {
-      console.warn('Failed to load decks from localStorage:', e);
-    }
+    } catch (e) {}
 
     if (loadedDecks.length === 0) {
       this.saveDecks(defaults);
@@ -54,7 +51,6 @@ class StorageManager {
     defaults.forEach(defaultDeck => {
       const existingIdx = loadedDecks.findIndex(d => d.id === defaultDeck.id);
       if (existingIdx >= 0) {
-        // Overwrite existing default decks to apply JSON corrections
         loadedDecks[existingIdx] = defaultDeck;
         updated = true;
       } else {
@@ -81,9 +77,7 @@ class StorageManager {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.PROGRESS);
       return stored ? JSON.parse(stored) : {};
-    } catch (e) {
-      return {};
-    }
+    } catch (e) { return {}; }
   }
 
   saveProgress(progress) {
@@ -94,10 +88,7 @@ class StorageManager {
   }
 
   setCardMastery(cardId, isMastered) {
-    this.progress[cardId] = {
-      mastered: !!isMastered,
-      timestamp: Date.now()
-    };
+    this.progress[cardId] = { mastered: !!isMastered, timestamp: Date.now() };
     this.saveProgress(this.progress);
   }
 
@@ -130,6 +121,12 @@ class StorageManager {
     return this.stats.score || 0;
   }
 
+  resetScore() {
+    this.stats.score = 0;
+    this.saveStats(this.stats);
+    return 0;
+  }
+
   loadSettings() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -158,6 +155,11 @@ class StorageManager {
     }
     this.saveDecks(this.decks);
     return deck;
+  }
+
+  deleteDeck(deckId) {
+    this.decks = this.decks.filter(d => d.id !== deckId);
+    this.saveDecks(this.decks);
   }
 
   getDeckMasteredCount(deckId) {
@@ -196,6 +198,7 @@ class StorageManager {
           this.decks.push(newDeck);
         }
       });
+
       this.saveDecks(this.decks);
       return { success: true, count: incomingDecks.length };
     } catch (e) {

@@ -1,9 +1,3 @@
-/**
- * Flashcard Study - User Input Study Controller
- * Matches screenshot format: type-to-answer, check button, feedback & explanation,
- * score tracking, shuffle toggle, and multi-deck management.
- */
-
 class FlashcardStudyApp {
   constructor() {
     this.currentDeck = null;
@@ -57,7 +51,6 @@ class FlashcardStudyApp {
     if (settings && typeof settings.shuffle === 'boolean') {
       this.shuffleCheckbox.checked = settings.shuffle;
     }
-    // Load first deck available
     if (window.storage.decks.length > 0) {
       this.loadDeckForStudy(window.storage.decks[0]);
     }
@@ -66,9 +59,11 @@ class FlashcardStudyApp {
   loadDeckForStudy(deck) {
     this.currentDeck = deck;
     this.activeCards = [...deck.cards];
+
     if (this.shuffleCheckbox.checked) {
       this.shuffleArray(this.activeCards);
     }
+
     this.currentIndex = 0;
     this.showStudyView();
     this.renderCurrentCard();
@@ -133,7 +128,7 @@ class FlashcardStudyApp {
     this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
 
     if (isMatch) {
-      window.storage.addScore(1); 
+      window.storage.addScore(1);
       window.storage.setCardMastery(card.id, true);
 
       this.cardFeedbackBox.classList.add('active', 'feedback-correct');
@@ -142,7 +137,7 @@ class FlashcardStudyApp {
       this.feedbackExplanation.textContent = card.explanation || '';
     } else {
       window.storage.setCardMastery(card.id, false);
-      this.activeCards.push(card); 
+      this.activeCards.push(card);
 
       this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
       this.feedbackStatusTitle.innerHTML = '<span>✕</span> Incorrect';
@@ -304,7 +299,7 @@ class FlashcardStudyApp {
     row.className = 'card-row-builder';
     row.innerHTML = `
       <button type="button" class="card-remove-btn" title="Remove">✕</button>
-      <input type="text" class="form-input card-q-field" placeholder="Question / Formula *" required value="${this.escapeHTML(q)}">
+      <input type="text" class="form-input card-q-field" placeholder="Question *" required value="${this.escapeHTML(q)}">
       <input type="text" class="form-input card-a-field" placeholder="Correct Answer *" required value="${this.escapeHTML(a)}">
       <input type="text" class="form-input card-e-field" placeholder="Explanation" value="${this.escapeHTML(exp)}">
     `;
@@ -381,9 +376,9 @@ class FlashcardStudyApp {
   }
 }
 
-// ASYNC INITIALIZATION
+// Initialize asynchronously once DOM is ready and fetch completes
 document.addEventListener('DOMContentLoaded', async () => {
   window.storage = new StorageManager();
-  await window.storage.init(); // Wait for data.json fetch to complete
+  await window.storage.init();
   window.app = new FlashcardStudyApp();
 });
