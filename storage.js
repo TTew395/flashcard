@@ -16,7 +16,7 @@ class StorageManager {
   async init() {
     let defaults = [];
     try {
-      const response = await fetch('data.json');
+      const response = await fetch('js/data.json');
       if (response.ok) {
         defaults = await response.json();
       } else {
