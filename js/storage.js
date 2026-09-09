@@ -1,10 +1,5 @@
-/**
- * FlashMind - LocalStorage & Data Management
- * Handles persistence for decks, card mastery, score, and user decks.
- */
-
 const STORAGE_KEYS = {
-  DECKS: 'flashmind_decks_v2', // v2 to clear legacy decks
+  DECKS: 'flashmind_decks_v6',
   PROGRESS: 'flashmind_progress_v2',
   STATS: 'flashmind_stats_v2',
   SETTINGS: 'flashmind_settings_v2'
@@ -12,64 +7,88 @@ const STORAGE_KEYS = {
 
 class StorageManager {
   constructor() {
-    this.decks = this.loadDecks();
+    this.decks = [];
     this.progress = this.loadProgress();
     this.stats = this.loadStats();
     this.settings = this.loadSettings();
   }
 
-  loadDecks() {
+  async init() {
+    let defaults = [];
+    try {
+      const response = await fetch('data.json');
+      if (response.ok) {
+        defaults = await response.json();
+      } else {
+        console.warn('Failed to load data.json. Status:', response.status);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch data.json:', e);
+    }
+    
+    this.decks = this.loadDecks(defaults);
+  }
+
+  loadDecks(defaults) {
+    let loadedDecks = [];
+
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DECKS);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Verify it doesn't contain legacy decks
-          if (!parsed.some(d => d.id === 'cs-web-dev')) {
-            return parsed;
-          }
+          loadedDecks = parsed;
         }
       }
-    } catch (e) {
-      console.warn('Failed to load decks from localStorage, using defaults:', e);
+    } catch (e) {}
+
+    if (loadedDecks.length === 0) {
+      this.saveDecks(defaults);
+      return JSON.parse(JSON.stringify(defaults));
     }
-    // Clean reset to new DEFAULT_DECKS
-    this.saveDecks(DEFAULT_DECKS);
-    return JSON.parse(JSON.stringify(DEFAULT_DECKS));
+
+    let updated = false;
+    defaults.forEach(defaultDeck => {
+      const existingIdx = loadedDecks.findIndex(d => d.id === defaultDeck.id);
+      if (existingIdx >= 0) {
+        loadedDecks[existingIdx] = defaultDeck;
+        updated = true;
+      } else {
+        loadedDecks.push(defaultDeck);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      this.saveDecks(loadedDecks);
+    }
+
+    return loadedDecks;
   }
 
   saveDecks(decks) {
     this.decks = decks;
     try {
       localStorage.setItem(STORAGE_KEYS.DECKS, JSON.stringify(decks));
-    } catch (e) {
-      console.error('Failed to save decks to localStorage:', e);
-    }
+    } catch (e) {}
   }
 
   loadProgress() {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.PROGRESS);
       return stored ? JSON.parse(stored) : {};
-    } catch (e) {
-      return {};
-    }
+    } catch (e) { return {}; }
   }
 
   saveProgress(progress) {
     this.progress = progress;
     try {
       localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(progress));
-    } catch (e) {
-      console.error('Failed to save progress:', e);
-    }
+    } catch (e) {}
   }
 
   setCardMastery(cardId, isMastered) {
-    this.progress[cardId] = {
-      mastered: !!isMastered,
-      timestamp: Date.now()
-    };
+    this.progress[cardId] = { mastered: !!isMastered, timestamp: Date.now() };
     this.saveProgress(this.progress);
   }
 
@@ -82,12 +101,7 @@ class StorageManager {
       const stored = localStorage.getItem(STORAGE_KEYS.STATS);
       if (stored) return JSON.parse(stored);
     } catch (e) {}
-
-    return {
-      score: 0,
-      totalAnswered: 0,
-      totalCorrect: 0
-    };
+    return { score: 0, totalAnswered: 0, totalCorrect: 0 };
   }
 
   saveStats(stats) {
@@ -118,9 +132,7 @@ class StorageManager {
       const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
       if (stored) return JSON.parse(stored);
     } catch (e) {}
-    return {
-      shuffle: true
-    };
+    return { shuffle: true };
   }
 
   saveSettings(settings) {
@@ -161,11 +173,7 @@ class StorageManager {
   }
 
   exportAllDecksJSON() {
-    const exportData = {
-      version: "2.0",
-      exportDate: new Date().toISOString(),
-      decks: this.decks
-    };
+    const exportData = { version: "2.0", exportDate: new Date().toISOString(), decks: this.decks };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
@@ -179,14 +187,10 @@ class StorageManager {
     try {
       const data = JSON.parse(jsonString);
       const incomingDecks = Array.isArray(data) ? data : data.decks;
-      if (!Array.isArray(incomingDecks)) {
-        throw new Error('Invalid JSON: expected array of decks');
-      }
+      if (!Array.isArray(incomingDecks)) throw new Error('Invalid JSON: expected array of decks');
 
       incomingDecks.forEach(newDeck => {
-        if (!newDeck.id) {
-          newDeck.id = 'deck-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
-        }
+        if (!newDeck.id) newDeck.id = 'deck-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
         const existingIdx = this.decks.findIndex(d => d.id === newDeck.id);
         if (existingIdx >= 0) {
           this.decks[existingIdx] = newDeck;
@@ -202,5 +206,3 @@ class StorageManager {
     }
   }
 }
-
-const storage = new StorageManager();

@@ -1,9 +1,3 @@
-/**
- * Flashcard Study - User Input Study Controller
- * Matches screenshot format: type-to-answer, check button, feedback & explanation,
- * score tracking, shuffle toggle, and multi-deck management.
- */
-
 class FlashcardStudyApp {
   constructor() {
     this.currentDeck = null;
@@ -17,43 +11,30 @@ class FlashcardStudyApp {
   }
 
   initElements() {
-    // Views
     this.studyView = document.getElementById('study-view');
     this.decksView = document.getElementById('decks-view');
-
-    // Header & Meta
     this.logoBrandBtn = document.getElementById('logo-brand-btn');
     this.allDecksBtn = document.getElementById('all-decks-btn');
     this.backToStudyBtn = document.getElementById('back-to-study-btn');
     this.deckTitleDisplay = document.getElementById('deck-title-display');
     this.deckMasteredDisplay = document.getElementById('deck-mastered-display');
     this.scoreDisplay = document.getElementById('score-display');
-
-    // Card & Input
     this.cardPromptDisplay = document.getElementById('card-prompt-display');
     this.answerForm = document.getElementById('answer-form');
     this.answerInput = document.getElementById('answer-input');
     this.btnCheck = document.getElementById('btn-check');
-
-    // Feedback & Explanation
     this.cardFeedbackBox = document.getElementById('card-feedback-box');
     this.feedbackStatusTitle = document.getElementById('feedback-status-title');
     this.feedbackCorrectAnswer = document.getElementById('feedback-correct-answer');
     this.feedbackExplanation = document.getElementById('feedback-explanation');
     this.btnFeedbackNext = document.getElementById('btn-feedback-next');
-
-    // Bottom Controls
     this.shuffleCheckbox = document.getElementById('shuffle-checkbox');
     this.btnSkip = document.getElementById('btn-skip');
-
-    // Decks Management
     this.decksGridContainer = document.getElementById('decks-grid-container');
     this.exportDecksBtn = document.getElementById('export-decks-btn');
     this.importDecksBtn = document.getElementById('import-decks-btn');
     this.importFileInput = document.getElementById('import-file-input');
     this.openNewDeckModalBtn = document.getElementById('open-new-deck-modal-btn');
-
-    // Modal
     this.deckEditorModal = document.getElementById('deck-editor-modal');
     this.modalCloseBtn = document.getElementById('modal-close-btn');
     this.modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -66,15 +47,13 @@ class FlashcardStudyApp {
   }
 
   initDeck() {
-    // Restore shuffle checkbox setting
-    const settings = storage.loadSettings();
+    const settings = window.storage.loadSettings();
     if (settings && typeof settings.shuffle === 'boolean') {
       this.shuffleCheckbox.checked = settings.shuffle;
     }
-
-    // Default to AP Chemistry: Polyatomic Ions (from screenshot)
-    const polyatomicDeck = storage.getDeckById('ap-chem-polyatomic') || storage.decks[0];
-    this.loadDeckForStudy(polyatomicDeck);
+    if (window.storage.decks.length > 0) {
+      this.loadDeckForStudy(window.storage.decks[0]);
+    }
   }
 
   loadDeckForStudy(deck) {
@@ -107,7 +86,6 @@ class FlashcardStudyApp {
       return;
     }
 
-    // If reached end, reshuffle or loop
     if (this.currentIndex >= this.activeCards.length) {
       this.currentIndex = 0;
       if (this.shuffleCheckbox.checked) {
@@ -118,24 +96,17 @@ class FlashcardStudyApp {
     const card = this.activeCards[this.currentIndex];
     this.isAnswerChecked = false;
 
-    // Update Header Meta
     this.deckTitleDisplay.textContent = this.currentDeck.title;
-    const { mastered, total } = storage.getDeckMasteredCount(this.currentDeck.id);
+    const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
-
-    // Update Score
-    this.scoreDisplay.textContent = `Score: ${storage.getScore()}`;
-
-    // Update Prompt
+    this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
     this.cardPromptDisplay.innerHTML = card.question;
 
-    // Reset Form Input & Feedback
     this.answerInput.value = '';
     this.answerInput.disabled = false;
     this.btnCheck.style.display = 'inline-block';
     this.cardFeedbackBox.classList.remove('active', 'feedback-correct', 'feedback-incorrect');
 
-    // Auto-focus input
     setTimeout(() => {
       this.answerInput.focus();
     }, 50);
@@ -152,25 +123,20 @@ class FlashcardStudyApp {
 
     this.isAnswerChecked = true;
     const card = this.activeCards[this.currentIndex];
-
     const isMatch = this.checkAnswerMatch(rawInput, card);
 
     this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
 
     if (isMatch) {
-      // Correct!
-      storage.addScore(1); // Increment score
-      storage.setCardMastery(card.id, true);
+      window.storage.addScore(1);
+      window.storage.setCardMastery(card.id, true);
 
       this.cardFeedbackBox.classList.add('active', 'feedback-correct');
       this.feedbackStatusTitle.innerHTML = '<span>✓</span> Correct!';
       this.feedbackCorrectAnswer.textContent = card.answer;
       this.feedbackExplanation.textContent = card.explanation || '';
     } else {
-      // Incorrect
-      storage.setCardMastery(card.id, false);
-
-      // Re-queue this card at the end of the active deck for spaced practice
+      window.storage.setCardMastery(card.id, false);
       this.activeCards.push(card);
 
       this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
@@ -179,16 +145,12 @@ class FlashcardStudyApp {
       this.feedbackExplanation.textContent = card.explanation || '';
     }
 
-    // Update displays
-    this.scoreDisplay.textContent = `Score: ${storage.getScore()}`;
-    const { mastered, total } = storage.getDeckMasteredCount(this.currentDeck.id);
+    this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
+    const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
 
-    // Disable input while feedback is shown
     this.answerInput.disabled = true;
     this.btnCheck.style.display = 'none';
-
-    // Focus Next button
     this.btnFeedbackNext.focus();
   }
 
@@ -196,7 +158,7 @@ class FlashcardStudyApp {
     const normalize = (str) => {
       return (str || '')
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // remove spaces, hyphens, parentheses, etc.
+        .replace(/[^a-z0-9]/g, '')
         .trim();
     };
 
@@ -205,7 +167,6 @@ class FlashcardStudyApp {
 
     if (userNorm === targetNorm) return true;
 
-    // Check aliases if defined
     if (Array.isArray(card.aliases)) {
       for (const alias of card.aliases) {
         if (userNorm === normalize(alias)) return true;
@@ -227,10 +188,10 @@ class FlashcardStudyApp {
 
   renderDecksGrid() {
     this.decksGridContainer.innerHTML = '';
-    const decks = storage.decks;
+    const decks = window.storage.decks;
 
     decks.forEach(deck => {
-      const { mastered, total } = storage.getDeckMasteredCount(deck.id);
+      const { mastered, total } = window.storage.getDeckMasteredCount(deck.id);
       const cardEl = document.createElement('div');
       cardEl.className = 'deck-select-card';
 
@@ -255,37 +216,31 @@ class FlashcardStudyApp {
   }
 
   bindEvents() {
-    // Navigation
     this.allDecksBtn.addEventListener('click', () => this.showDecksView());
     this.backToStudyBtn.addEventListener('click', () => this.showStudyView());
     this.logoBrandBtn.addEventListener('click', () => this.showStudyView());
 
-    // Check Answer Submission
     this.answerForm.addEventListener('submit', (e) => {
       e.preventDefault();
       this.handleAnswerCheck();
     });
 
-    // Next button in feedback
     this.btnFeedbackNext.addEventListener('click', () => {
       this.advanceToNextCard();
     });
 
-    // Skip button
     this.btnSkip.addEventListener('click', () => {
       this.skipCurrentCard();
     });
 
-    // Shuffle Checkbox
     this.shuffleCheckbox.addEventListener('change', (e) => {
-      storage.saveSettings({ shuffle: e.target.checked });
+      window.storage.saveSettings({ shuffle: e.target.checked });
       if (e.target.checked) {
         this.shuffleArray(this.activeCards);
         this.renderCurrentCard();
       }
     });
 
-    // Keyboard Shortcuts (Enter advances when feedback is open)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && this.isAnswerChecked) {
         e.preventDefault();
@@ -293,9 +248,8 @@ class FlashcardStudyApp {
       }
     });
 
-    // Export / Import
     this.exportDecksBtn.addEventListener('click', () => {
-      storage.exportAllDecksJSON();
+      window.storage.exportAllDecksJSON();
     });
 
     this.importDecksBtn.addEventListener('click', () => {
@@ -307,7 +261,7 @@ class FlashcardStudyApp {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (event) => {
-        const res = storage.importDecksJSON(event.target.result);
+        const res = window.storage.importDecksJSON(event.target.result);
         if (res.success) {
           alert(`Imported ${res.count} deck(s)!`);
           this.renderDecksGrid();
@@ -319,7 +273,6 @@ class FlashcardStudyApp {
       reader.readAsText(file);
     });
 
-    // Modal Events
     this.openNewDeckModalBtn.addEventListener('click', () => this.openModal());
     this.modalCloseBtn.addEventListener('click', () => this.closeModal());
     this.modalCancelBtn.addEventListener('click', () => this.closeModal());
@@ -327,7 +280,6 @@ class FlashcardStudyApp {
     this.deckEditorForm.addEventListener('submit', (e) => this.handleSaveNewDeck(e));
   }
 
-  // Modal logic
   openModal() {
     this.deckTitleInput.value = '';
     this.deckDescInput.value = '';
@@ -347,9 +299,9 @@ class FlashcardStudyApp {
     row.className = 'card-row-builder';
     row.innerHTML = `
       <button type="button" class="card-remove-btn" title="Remove">✕</button>
-      <input type="text" class="form-input card-q-field" placeholder="Question / Formula (e.g. C₂O₄²⁻) *" required value="${this.escapeHTML(q)}">
-      <input type="text" class="form-input card-a-field" placeholder="Correct Answer (e.g. Oxalate) *" required value="${this.escapeHTML(a)}">
-      <input type="text" class="form-input card-e-field" placeholder="Explanation (Why it's correct)" value="${this.escapeHTML(exp)}">
+      <input type="text" class="form-input card-q-field" placeholder="Question *" required value="${this.escapeHTML(q)}">
+      <input type="text" class="form-input card-a-field" placeholder="Correct Answer *" required value="${this.escapeHTML(a)}">
+      <input type="text" class="form-input card-e-field" placeholder="Explanation" value="${this.escapeHTML(exp)}">
     `;
 
     row.querySelector('.card-remove-btn').addEventListener('click', () => {
@@ -401,7 +353,7 @@ class FlashcardStudyApp {
       cards
     };
 
-    storage.saveDeck(newDeck);
+    window.storage.saveDeck(newDeck);
     this.closeModal();
     this.loadDeckForStudy(newDeck);
   }
@@ -424,6 +376,9 @@ class FlashcardStudyApp {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize asynchronously once DOM is ready and fetch completes
+document.addEventListener('DOMContentLoaded', async () => {
+  window.storage = new StorageManager();
+  await window.storage.init();
   window.app = new FlashcardStudyApp();
 });
