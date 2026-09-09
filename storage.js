@@ -1,10 +1,5 @@
-/**
- * FlashMind - LocalStorage & Data Management
- * Handles persistence for decks, card mastery, score, and user decks.
- */
-
 const STORAGE_KEYS = {
-  DECKS: 'flashmind_decks_v2', // v2 to clear legacy decks
+  DECKS: 'flashmind_decks_v3', // Changed to v3 to force cache invalidation
   PROGRESS: 'flashmind_progress_v2',
   STATS: 'flashmind_stats_v2',
   SETTINGS: 'flashmind_settings_v2'
@@ -19,40 +14,43 @@ class StorageManager {
   }
 
   loadDecks() {
-  let loadedDecks = [];
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.DECKS);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0 && !parsed.some(d => d.id === 'cs-web-dev')) {
-        loadedDecks = parsed;
+    let loadedDecks = [];
+    const defaults = (typeof DEFAULT_DECKS !== 'undefined') ? DEFAULT_DECKS : [];
+
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.DECKS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedDecks = parsed;
+        }
       }
+    } catch (e) {
+      console.warn('Failed to load decks from localStorage, using defaults:', e);
     }
-  } catch (e) {
-    console.warn('Failed to load decks from localStorage, using defaults:', e);
-  }
 
-  // If no saved decks exist, initialize with DEFAULT_DECKS
-  if (loadedDecks.length === 0) {
-    this.saveDecks(DEFAULT_DECKS);
-    return JSON.parse(JSON.stringify(DEFAULT_DECKS));
-  }
-
-  // Automatically merge any missing default decks from data.js
-  let updated = false;
-  DEFAULT_DECKS.forEach(defaultDeck => {
-    if (!loadedDecks.some(d => d.id === defaultDeck.id)) {
-      loadedDecks.push(defaultDeck);
-      updated = true;
+    // If no saved decks exist, initialize with defaults
+    if (loadedDecks.length === 0) {
+      this.saveDecks(defaults);
+      return JSON.parse(JSON.stringify(defaults));
     }
-  });
 
-  if (updated) {
-    this.saveDecks(loadedDecks);
+    // Automatically merge any missing default decks from data.js
+    let updated = false;
+    defaults.forEach(defaultDeck => {
+      if (!loadedDecks.some(d => d.id === defaultDeck.id)) {
+        loadedDecks.push(defaultDeck);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      this.saveDecks(loadedDecks);
+    }
+
+    return loadedDecks;
   }
 
-  return loadedDecks;
-}
   saveDecks(decks) {
     this.decks = decks;
     try {

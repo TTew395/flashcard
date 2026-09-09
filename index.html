@@ -427,6 +427,7 @@ const DEFAULT_DECKS = [
     title: "AP Chemistry: Polyatomic Ions",
     description: "Formulas, charges, and systematic nomenclature for essential AP Chemistry polyatomic ions.",
     icon: "⚗️",
+    category: "Chemistry",
     cards: [
       { id:"ion-1",  question:"C₂O₄²⁻",  answer:"Oxalate",            aliases:["oxalate","oxalate ion"],                                                      explanation:"Oxalate (C₂O₄²⁻) is the dianion derived from oxalic acid (H₂C₂O₄) by loss of two protons. It acts as a bidentate chelating ligand in coordination chemistry." },
       { id:"ion-2",  question:"NH₄⁺",    answer:"Ammonium",           aliases:["ammonium","ammonium ion"],                                                    explanation:"Ammonium (NH₄⁺) is the positively charged cation formed by protonation of ammonia (NH₃). All common ammonium salts are soluble in water." },
@@ -463,6 +464,7 @@ const DEFAULT_DECKS = [
     title: "AP Chemistry: Strong Acids & Bases",
     description: "The 7 strong acids and strong soluble metal hydroxide bases required for AP Chemistry.",
     icon: "🧪",
+    category: "Chemistry",
     cards: [
       { id:"ab-1", question:"HCl",      answer:"Hydrochloric Acid",  aliases:["hydrochloric acid","hydrochloric"],  explanation:"HCl is a strong monoprotic binary acid that fully dissociates: HCl → H⁺ + Cl⁻." },
       { id:"ab-2", question:"HNO₃",     answer:"Nitric Acid",        aliases:["nitric acid","nitric"],              explanation:"HNO₃ is a strong oxyacid and powerful oxidizing agent that fully ionizes to H⁺ + NO₃⁻." },
@@ -473,6 +475,34 @@ const DEFAULT_DECKS = [
       { id:"ab-7", question:"HClO₃",    answer:"Chloric Acid",       aliases:["chloric acid","chloric"],            explanation:"HClO₃ is recognized on the AP Chemistry exam as one of the 7 strong acids." },
       { id:"ab-8", question:"Ba(OH)₂",  answer:"Barium Hydroxide",   aliases:["barium hydroxide"],                  explanation:"Barium hydroxide is a strong, soluble Group 2 base that yields 2 mol OH⁻ per mole dissolved." }
     ]
+  },
+  {
+    id: "katakana",
+    title: "Katakana",
+    description: "Pronounciation of Katakana.",
+    icon: "カタカナ",
+    category: "Japanese",
+    cards: [
+      { id:"k-1", question:"ア", answer:"a", aliases:["A"], explanation:"a, katakana.", tag:"Katakana" },
+      { id:"k-2", question:"イ", answer:"i", aliases:["I"], explanation:"i, katakana.", tag:"Katakana" },
+      { id:"k-3", question:"ウ", answer:"u", aliases:["U"], explanation:"u, katakana.", tag:"Katakana" },
+      { id:"k-4", question:"エ", answer:"e", aliases:["E"], explanation:"e, katakana.", tag:"Katakana" },
+      { id:"k-5", question:"オ", answer:"o", aliases:["O"], explanation:"o, katakana.", tag:"Katakana" }
+    ]
+  },
+  {
+    id: "hiragana",
+    title: "Hiragana",
+    description: "Pronounciation of Hiragana.",
+    icon: "平仮名",
+    category: "Japanese",
+    cards: [
+      { id:"h-1", question:"あ", answer:"a", aliases:["A"], explanation:"a, hiragana.", tag:"Hiragana" },
+      { id:"h-2", question:"い", answer:"i", aliases:["I"], explanation:"i, hiragana.", tag:"Hiragana" },
+      { id:"h-3", question:"う", answer:"u", aliases:["U"], explanation:"u, hiragana.", tag:"Hiragana" },
+      { id:"h-4", question:"え", answer:"e", aliases:["E"], explanation:"e, hiragana.", tag:"Hiragana" },
+      { id:"h-5", question:"お", answer:"o", aliases:["O"], explanation:"o, hiragana.", tag:"Hiragana" }
+    ]
   }
 ];
 
@@ -480,7 +510,7 @@ const DEFAULT_DECKS = [
    STORAGE
 ============================================================ */
 const SK = {
-  DECKS:    'fc_decks_v2',
+  DECKS:    'fc_decks_v3', // Updated to v3 to clear stale local caching
   PROGRESS: 'fc_progress_v2',
   STATS:    'fc_stats_v2',
   SETTINGS: 'fc_settings_v2'
@@ -506,18 +536,36 @@ class StorageManager {
   }
 
   _loadDecks() {
+    let loadedDecks = [];
     try {
       const v = localStorage.getItem(SK.DECKS);
       if (v) {
         const p = JSON.parse(v);
-        // Reject legacy data that contains the old cs-web-dev deck
         if (Array.isArray(p) && p.length > 0 && !p.some(d => d.id === 'cs-web-dev')) {
-          return p;
+          loadedDecks = p;
         }
       }
     } catch {}
-    this._save(SK.DECKS, DEFAULT_DECKS);
-    return JSON.parse(JSON.stringify(DEFAULT_DECKS));
+
+    if (loadedDecks.length === 0) {
+      this._save(SK.DECKS, DEFAULT_DECKS);
+      return JSON.parse(JSON.stringify(DEFAULT_DECKS));
+    }
+
+    // Automatically merge any missing default decks
+    let updated = false;
+    DEFAULT_DECKS.forEach(defaultDeck => {
+      if (!loadedDecks.some(d => d.id === defaultDeck.id)) {
+        loadedDecks.push(defaultDeck);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      this._save(SK.DECKS, loadedDecks);
+    }
+
+    return loadedDecks;
   }
 
   saveDecks(d)   { this.decks = d; this._save(SK.DECKS, d); }
