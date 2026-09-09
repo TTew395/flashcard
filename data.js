@@ -153,7 +153,7 @@
       { "id": "k-89", "question": "ヒュ", "answer": "hyu", "aliases": ["Hyu"], "explanation": "hyu, katakana." },
       { "id": "k-90", "question": "ヒョ", "answer": "hyo", "aliases": ["Hyo"], "explanation": "hyo, katakana." },
       { "id": "k-91", "question": "ジャ", "answer": "ja", "aliases": ["Jya", "jya", "Ja"], "explanation": "ja, katakana." },
-      { "id": "k-92", "question:" : "ジュ", "answer": "ju", "aliases": ["Jyu", "jyu", "Ju"], "explanation": "ju, katakana." },
+      { "id": "k-92", "question": "ジュ", "answer": "ju", "aliases": ["Jyu", "jyu", "Ju"], "explanation": "ju, katakana." },
       { "id": "k-93", "question": "ジョ", "answer": "jo", "aliases": ["Jyo", "jyo", "Jo"], "explanation": "jo, katakana." },
       { "id": "k-94", "question": "ビャ", "answer": "bya", "aliases": ["Bya"], "explanation": "bya, katakana." },
       { "id": "k-95", "question": "ビュ", "answer": "byu", "aliases": ["Byu"], "explanation": "byu, katakana." },
