@@ -73,11 +73,11 @@ setCardMastery(cardId, isCorrect) {
   const existing = this.progress[cardId] || { count: 0, mastered: false };
 
   if (isCorrect) {
-    // Increment correct count
+    // Increment count on correct answer
     existing.count = (existing.count || 0) + 1;
   }
 
-  // Set mastered ONLY if the correct streak reaches 3
+  // Set mastered flag strictly when count reaches 3 or more
   existing.mastered = existing.count >= 3;
   existing.timestamp = Date.now();
 
@@ -85,6 +85,11 @@ setCardMastery(cardId, isCorrect) {
   this.saveProgress(this.progress);
 }
 
+isCardMastered(cardId) {
+  const entry = this.progress[cardId];
+  // Require count to exist and be 3 or higher
+  return !!(entry && typeof entry.count === 'number' && entry.count >= 3);
+}
 isCardMastered(cardId) {
   const entry = this.progress[cardId];
   // Strictly require count to be at least 3
