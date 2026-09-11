@@ -74,9 +74,17 @@ class FlashcardStudyApp {
     this.studyView.style.display = 'block';
   }
 
-  showDecksView() {
+showDecksView() {
     this.studyView.style.display = 'none';
     this.decksView.classList.add('active');
+    
+    // Hide "Back to study" if no deck has been selected yet
+    if (!this.currentDeck) {
+      this.backToStudyBtn.style.display = 'none';
+    } else {
+      this.backToStudyBtn.style.display = 'inline-flex';
+    }
+
     this.renderDecksGrid();
   }
 
