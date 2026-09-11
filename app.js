@@ -86,6 +86,11 @@ class FlashcardStudyApp {
       return;
     }
 
+    // Resync deck reference with current storage state
+    if (this.currentDeck) {
+      this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
+    }
+
     if (this.currentIndex >= this.activeCards.length) {
       this.currentIndex = 0;
       if (this.shuffleCheckbox.checked) {
@@ -376,7 +381,6 @@ class FlashcardStudyApp {
   }
 }
 
-// Initialize asynchronously once DOM is ready and fetch completes
 document.addEventListener('DOMContentLoaded', async () => {
   window.storage = new StorageManager();
   await window.storage.init();
