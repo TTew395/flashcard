@@ -86,6 +86,11 @@ class FlashcardStudyApp {
       return;
     }
 
+    // Resync deck reference with current storage state
+    if (this.currentDeck) {
+      this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
+    }
+
     if (this.currentIndex >= this.activeCards.length) {
       this.currentIndex = 0;
       if (this.shuffleCheckbox.checked) {
@@ -113,46 +118,51 @@ class FlashcardStudyApp {
   }
 
   handleAnswerCheck() {
-    if (this.isAnswerChecked) {
-      this.advanceToNextCard();
-      return;
-    }
-
-    const rawInput = this.answerInput.value.trim();
-    if (!rawInput) return;
-
-    this.isAnswerChecked = true;
-    const card = this.activeCards[this.currentIndex];
-    const isMatch = this.checkAnswerMatch(rawInput, card);
-
-    this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
-
-    if (isMatch) {
-      window.storage.addScore(1);
-      window.storage.setCardMastery(card.id, true);
-
-      this.cardFeedbackBox.classList.add('active', 'feedback-correct');
-      this.feedbackStatusTitle.innerHTML = '<span>✓</span> Correct!';
-      this.feedbackCorrectAnswer.textContent = card.answer;
-      this.feedbackExplanation.textContent = card.explanation || '';
-    } else {
-      window.storage.setCardMastery(card.id, false);
-      this.activeCards.push(card);
-
-      this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
-      this.feedbackStatusTitle.innerHTML = '<span>✕</span> Incorrect';
-      this.feedbackCorrectAnswer.textContent = `The correct answer is: ${card.answer}`;
-      this.feedbackExplanation.textContent = card.explanation || '';
-    }
-
-    this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
-    const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
-    this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
-
-    this.answerInput.disabled = true;
-    this.btnCheck.style.display = 'none';
-    this.btnFeedbackNext.focus();
+  if (this.isAnswerChecked) {
+    this.advanceToNextCard();
+    return;
   }
+
+  const rawInput = this.answerInput.value.trim();
+  if (!rawInput) return;
+
+  this.isAnswerChecked = true;
+  const card = this.activeCards[this.currentIndex];
+  const isMatch = this.checkAnswerMatch(rawInput, card);
+
+  this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
+
+  if (isMatch) {
+    window.storage.addScore(1);
+    window.storage.setCardMastery(card.id, true);
+
+    this.cardFeedbackBox.classList.add('active', 'feedback-correct');
+    this.feedbackStatusTitle.innerHTML = '<span>✓</span> Correct!';
+    this.feedbackCorrectAnswer.textContent = card.answer;
+    this.feedbackExplanation.textContent = card.explanation || '';
+  } else {
+    window.storage.setCardMastery(card.id, false);
+    this.activeCards.push(card);
+
+    this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
+    this.feedbackStatusTitle.innerHTML = '<span>✕</span> Incorrect';
+    this.feedbackCorrectAnswer.textContent = `The correct answer is: ${card.answer}`;
+    this.feedbackExplanation.textContent = card.explanation || '';
+  }
+
+  // RE-SYNC currentDeck BEFORE CALCULATING MASTERY DISPLAY
+  if (this.currentDeck) {
+    this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
+  }
+
+  this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
+  const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
+  this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
+
+  this.answerInput.disabled = true;
+  this.btnCheck.style.display = 'none';
+  this.btnFeedbackNext.focus();
+}
 
   checkAnswerMatch(userInput, card) {
     const normalize = (str) => {
@@ -376,7 +386,6 @@ class FlashcardStudyApp {
   }
 }
 
-// Initialize asynchronously once DOM is ready and fetch completes
 document.addEventListener('DOMContentLoaded', async () => {
   window.storage = new StorageManager();
   await window.storage.init();
