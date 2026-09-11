@@ -16,7 +16,7 @@ class StorageManager {
   async init() {
     let defaults = [];
     try {
-      const response = await fetch('js/data.json');
+      const response = await fetch('data.json');
       if (response.ok) {
         defaults = await response.json();
       } else {
@@ -30,40 +30,22 @@ class StorageManager {
   }
 
   loadDecks(defaults) {
-    let loadedDecks = [];
-
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DECKS);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          loadedDecks = parsed;
+          // Return saved decks directly to avoid overwriting user updates
+          return parsed;
         }
       }
-    } catch (e) {}
-
-    if (loadedDecks.length === 0) {
-      this.saveDecks(defaults);
-      return JSON.parse(JSON.stringify(defaults));
+    } catch (e) {
+      console.warn('Failed to parse stored decks:', e);
     }
 
-    let updated = false;
-    defaults.forEach(defaultDeck => {
-      const existingIdx = loadedDecks.findIndex(d => d.id === defaultDeck.id);
-      if (existingIdx >= 0) {
-        loadedDecks[existingIdx] = defaultDeck;
-        updated = true;
-      } else {
-        loadedDecks.push(defaultDeck);
-        updated = true;
-      }
-    });
-
-    if (updated) {
-      this.saveDecks(loadedDecks);
-    }
-
-    return loadedDecks;
+    // Populate local storage with defaults only if empty
+    this.saveDecks(defaults);
+    return JSON.parse(JSON.stringify(defaults));
   }
 
   saveDecks(decks) {
@@ -87,13 +69,27 @@ class StorageManager {
     } catch (e) {}
   }
 
-  setCardMastery(cardId, isMastered) {
-    this.progress[cardId] = { mastered: !!isMastered, timestamp: Date.now() };
+  setCardMastery(cardId, isCorrect) {
+    const existing = this.progress[cardId] || { count: 0, mastered: false };
+    
+    if (isCorrect) {
+      existing.count = (existing.count || 0) + 1;
+    } else {
+      // Reset streak count on incorrect answer
+      existing.count = 0;
+    }
+
+    // Mastered only after 3 correct answers
+    existing.mastered = existing.count >= 3;
+    existing.timestamp = Date.now();
+
+    this.progress[cardId] = existing;
     this.saveProgress(this.progress);
   }
 
   isCardMastered(cardId) {
-    return !!this.progress[cardId]?.mastered;
+    const entry = this.progress[cardId];
+    return !!(entry && entry.count >= 3);
   }
 
   loadStats() {
