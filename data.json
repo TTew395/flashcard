@@ -118,7 +118,7 @@
       { "id": "k-56", "question": "ゾ", "answer": "zo", "aliases": ["Zo"], "explanation": "zo, katakana." },
       { "id": "k-57", "question": "ダ", "answer": "da", "aliases": ["Da"], "explanation": "da, katakana." },
       { "id": "k-58", "question": "ヂ", "answer": "di", "aliases": ["Di", "di"], "explanation": "di, pronounced ji/zhi, katakana." },
-      { "id": "k-59", "question": "ヅ", "answer": "du", "aliases": ["Du", "du",], "explanation": "du, pronounced tzu, katakana." },
+      { "id": "k-59", "question": "ヅ", "answer": "du", "aliases": ["Du", "du"], "explanation": "du, pronounced tzu, katakana." },
       { "id": "k-60", "question": "デ", "answer": "de", "aliases": ["De"], "explanation": "de, katakana." },
       { "id": "k-61", "question": "ド", "answer": "do", "aliases": ["Do"], "explanation": "do, katakana." },
       { "id": "k-62", "question": "バ", "answer": "ba", "aliases": ["Ba"], "explanation": "ba, katakana." },
