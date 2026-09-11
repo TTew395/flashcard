@@ -46,14 +46,14 @@ class FlashcardStudyApp {
     this.modalCardsContainer = document.getElementById('modal-cards-container');
   }
 
-  initDeck() {
+ initDeck() {
     const settings = window.storage.loadSettings();
     if (settings && typeof settings.shuffle === 'boolean') {
       this.shuffleCheckbox.checked = settings.shuffle;
     }
-    if (window.storage.decks.length > 0) {
-      this.loadDeckForStudy(window.storage.decks[0]);
-    }
+
+    // Default to showing the All Decks view on launch
+    this.showDecksView();
   }
 
   loadDeckForStudy(deck) {
