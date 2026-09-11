@@ -87,11 +87,6 @@ setCardMastery(cardId, isCorrect) {
 
 isCardMastered(cardId) {
   const entry = this.progress[cardId];
-  // Require count to exist and be 3 or higher
-  return !!(entry && typeof entry.count === 'number' && entry.count >= 3);
-}
-isCardMastered(cardId) {
-  const entry = this.progress[cardId];
   // Strictly require count to be at least 3
   return !!(entry && entry.count >= 3);
 }
