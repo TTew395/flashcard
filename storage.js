@@ -69,23 +69,27 @@ class StorageManager {
     } catch (e) {}
   }
 
-  setCardMastery(cardId, isCorrect) {
-    const existing = this.progress[cardId] || { count: 0, mastered: false };
-    
-    if (isCorrect) {
-      existing.count = (existing.count || 0) + 1;
-    } else {
-      // Reset streak count on incorrect answer
-      existing.count = 0;
-    }
+setCardMastery(cardId, isCorrect) {
+  const existing = this.progress[cardId] || { count: 0, mastered: false };
 
-    // Mastered only after 3 correct answers
-    existing.mastered = existing.count >= 3;
-    existing.timestamp = Date.now();
-
-    this.progress[cardId] = existing;
-    this.saveProgress(this.progress);
+  if (isCorrect) {
+    // Increment correct count
+    existing.count = (existing.count || 0) + 1;
   }
+
+  // Set mastered ONLY if the correct streak reaches 3
+  existing.mastered = existing.count >= 3;
+  existing.timestamp = Date.now();
+
+  this.progress[cardId] = existing;
+  this.saveProgress(this.progress);
+}
+
+isCardMastered(cardId) {
+  const entry = this.progress[cardId];
+  // Strictly require count to be at least 3
+  return !!(entry && entry.count >= 3);
+}
 
   isCardMastered(cardId) {
     const entry = this.progress[cardId];
