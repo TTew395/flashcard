@@ -4,6 +4,7 @@ class FlashcardStudyApp {
     this.activeCards = [];
     this.currentIndex = 0;
     this.isAnswerChecked = false;
+    this.isRetryMode = false; // Tracks if user is forced to re-type correct answer
 
     this.initElements();
     this.initDeck();
@@ -46,13 +47,13 @@ class FlashcardStudyApp {
     this.modalCardsContainer = document.getElementById('modal-cards-container');
   }
 
- initDeck() {
+  initDeck() {
     const settings = window.storage.loadSettings();
     if (settings && typeof settings.shuffle === 'boolean') {
       this.shuffleCheckbox.checked = settings.shuffle;
     }
 
-    // Default to showing the All Decks view on launch
+    // Default to showing All Decks on startup
     this.showDecksView();
   }
 
@@ -74,11 +75,10 @@ class FlashcardStudyApp {
     this.studyView.style.display = 'block';
   }
 
-showDecksView() {
+  showDecksView() {
     this.studyView.style.display = 'none';
     this.decksView.classList.add('active');
-    
-    // Hide "Back to study" if no deck has been selected yet
+
     if (!this.currentDeck) {
       this.backToStudyBtn.style.display = 'none';
     } else {
@@ -94,7 +94,6 @@ showDecksView() {
       return;
     }
 
-    // Resync deck reference with current storage state
     if (this.currentDeck) {
       this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
     }
@@ -108,6 +107,7 @@ showDecksView() {
 
     const card = this.activeCards[this.currentIndex];
     this.isAnswerChecked = false;
+    this.isRetryMode = false;
 
     this.deckTitleDisplay.textContent = this.currentDeck.title;
     const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
@@ -117,7 +117,9 @@ showDecksView() {
 
     this.answerInput.value = '';
     this.answerInput.disabled = false;
+    this.answerInput.placeholder = "Type the answer...";
     this.btnCheck.style.display = 'inline-block';
+    this.btnFeedbackNext.style.display = 'none'; // Hide next button during active typing
     this.cardFeedbackBox.classList.remove('active', 'feedback-correct', 'feedback-incorrect');
 
     setTimeout(() => {
@@ -126,51 +128,69 @@ showDecksView() {
   }
 
   handleAnswerCheck() {
-  if (this.isAnswerChecked) {
-    this.advanceToNextCard();
-    return;
+    const rawInput = this.answerInput.value.trim();
+    if (!rawInput) return;
+
+    const card = this.activeCards[this.currentIndex];
+    const isMatch = this.checkAnswerMatch(rawInput, card);
+
+    if (this.isRetryMode) {
+      // If user was incorrect previously and is now re-typing the answer:
+      if (isMatch) {
+        // Correctly typed the answer after seeing explanation
+        this.advanceToNextCard();
+      } else {
+        // Still incorrect on retry
+        this.answerInput.value = '';
+        this.answerInput.focus();
+      }
+      return;
+    }
+
+    this.isAnswerChecked = true;
+    this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
+
+    if (isMatch) {
+      window.storage.addScore(1);
+      window.storage.setCardMastery(card.id, true);
+
+      this.cardFeedbackBox.classList.add('active', 'feedback-correct');
+      this.feedbackStatusTitle.innerHTML = '<span>✓</span> Correct!';
+      this.feedbackCorrectAnswer.textContent = card.answer;
+      this.feedbackExplanation.textContent = card.explanation || '';
+      
+      this.answerInput.disabled = true;
+      this.btnCheck.style.display = 'none';
+      this.btnFeedbackNext.style.display = 'inline-block';
+      this.btnFeedbackNext.focus();
+    } else {
+      // Wrong answer submitted
+      window.storage.setCardMastery(card.id, false);
+      this.activeCards.push(card); // Re-queue card to repeat later
+
+      this.isRetryMode = true; // Engage retry requirement
+
+      this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
+      this.feedbackStatusTitle.innerHTML = '<span>✕</span> Incorrect';
+      this.feedbackCorrectAnswer.textContent = `The correct answer is: ${card.answer}`;
+      this.feedbackExplanation.textContent = card.explanation ? `${card.explanation} (Type the correct answer above to continue)` : 'Type the correct answer above to continue.';
+
+      this.answerInput.value = '';
+      this.answerInput.disabled = false;
+      this.answerInput.placeholder = "Type correct answer to proceed...";
+      this.btnCheck.style.display = 'inline-block';
+      this.btnFeedbackNext.style.display = 'none';
+      this.answerInput.focus();
+    }
+
+    if (this.currentDeck) {
+      this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
+    }
+
+    this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
+    const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
+    this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
   }
-
-  const rawInput = this.answerInput.value.trim();
-  if (!rawInput) return;
-
-  this.isAnswerChecked = true;
-  const card = this.activeCards[this.currentIndex];
-  const isMatch = this.checkAnswerMatch(rawInput, card);
-
-  this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
-
-  if (isMatch) {
-    window.storage.addScore(1);
-    window.storage.setCardMastery(card.id, true);
-
-    this.cardFeedbackBox.classList.add('active', 'feedback-correct');
-    this.feedbackStatusTitle.innerHTML = '<span>✓</span> Correct!';
-    this.feedbackCorrectAnswer.textContent = card.answer;
-    this.feedbackExplanation.textContent = card.explanation || '';
-  } else {
-    window.storage.setCardMastery(card.id, false);
-    this.activeCards.push(card);
-
-    this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
-    this.feedbackStatusTitle.innerHTML = '<span>✕</span> Incorrect';
-    this.feedbackCorrectAnswer.textContent = `The correct answer is: ${card.answer}`;
-    this.feedbackExplanation.textContent = card.explanation || '';
-  }
-
-  // RE-SYNC currentDeck BEFORE CALCULATING MASTERY DISPLAY
-  if (this.currentDeck) {
-    this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
-  }
-
-  this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
-  const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
-  this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
-
-  this.answerInput.disabled = true;
-  this.btnCheck.style.display = 'none';
-  this.btnFeedbackNext.focus();
-}
 
   checkAnswerMatch(userInput, card) {
     const normalize = (str) => {
@@ -253,14 +273,19 @@ showDecksView() {
 
     this.shuffleCheckbox.addEventListener('change', (e) => {
       window.storage.saveSettings({ shuffle: e.target.checked });
-      if (e.target.checked) {
-        this.shuffleArray(this.activeCards);
+      if (this.activeCards.length > 0) {
+        if (e.target.checked) {
+          // Reshuffle remaining card queue
+          const unstudied = this.activeCards.slice(this.currentIndex);
+          this.shuffleArray(unstudied);
+          this.activeCards = [...this.activeCards.slice(0, this.currentIndex), ...unstudied];
+        }
         this.renderCurrentCard();
       }
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && this.isAnswerChecked) {
+      if (e.key === 'Enter' && this.isAnswerChecked && !this.isRetryMode) {
         e.preventDefault();
         this.advanceToNextCard();
       }
