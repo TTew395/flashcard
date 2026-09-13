@@ -1,10 +1,9 @@
 class FlashcardStudyApp {
   constructor() {
     this.currentDeck = null;
-    this.activeCards = [];
-    this.currentIndex = 0;
+    this.currentCard = null;
     this.isAnswerChecked = false;
-    this.isRetryMode = false; // Tracks if user is forced to re-type correct answer
+    this.isRetryMode = false;
 
     this.initElements();
     this.initDeck();
@@ -21,6 +20,7 @@ class FlashcardStudyApp {
     this.deckMasteredDisplay = document.getElementById('deck-mastered-display');
     this.scoreDisplay = document.getElementById('score-display');
     this.cardPromptDisplay = document.getElementById('card-prompt-display');
+    this.cardMasteryLevelDisplay = document.getElementById('card-mastery-level-display');
     this.answerForm = document.getElementById('answer-form');
     this.answerInput = document.getElementById('answer-input');
     this.btnCheck = document.getElementById('btn-check');
@@ -29,7 +29,6 @@ class FlashcardStudyApp {
     this.feedbackCorrectAnswer = document.getElementById('feedback-correct-answer');
     this.feedbackExplanation = document.getElementById('feedback-explanation');
     this.btnFeedbackNext = document.getElementById('btn-feedback-next');
-    this.shuffleCheckbox = document.getElementById('shuffle-checkbox');
     this.btnSkip = document.getElementById('btn-skip');
     this.decksGridContainer = document.getElementById('decks-grid-container');
     this.exportDecksBtn = document.getElementById('export-decks-btn');
@@ -48,26 +47,13 @@ class FlashcardStudyApp {
   }
 
   initDeck() {
-    const settings = window.storage.loadSettings();
-    if (settings && typeof settings.shuffle === 'boolean') {
-      this.shuffleCheckbox.checked = settings.shuffle;
-    }
-
-    // Default to showing All Decks on startup
     this.showDecksView();
   }
 
   loadDeckForStudy(deck) {
     this.currentDeck = deck;
-    this.activeCards = [...deck.cards];
-
-    if (this.shuffleCheckbox.checked) {
-      this.shuffleArray(this.activeCards);
-    }
-
-    this.currentIndex = 0;
     this.showStudyView();
-    this.renderCurrentCard();
+    this.pickNextSemiRandomCard();
   }
 
   showStudyView() {
@@ -88,9 +74,52 @@ class FlashcardStudyApp {
     this.renderDecksGrid();
   }
 
+  // Semi-Random Weighted Selection:
+  // Lower mastery level = higher probability of selection.
+  pickNextSemiRandomCard() {
+    if (!this.currentDeck || !this.currentDeck.cards || this.currentDeck.cards.length === 0) {
+      this.currentCard = null;
+      this.renderCurrentCard();
+      return;
+    }
+
+    const cards = this.currentDeck.cards;
+    
+    // Assign weights based on remaining score needed to reach mastery (3)
+    const weights = cards.map(c => {
+      const level = window.storage.getCardMasteryLevel(c.id);
+      // level 0 -> weight 4, level 1 -> weight 3, level 2 -> weight 2, level 3+ -> weight 1
+      return Math.max(1, 4 - level);
+    });
+
+    // Avoid picking the exact same card consecutively if deck has > 1 card
+    if (cards.length > 1 && this.currentCard) {
+      const curIndex = cards.findIndex(c => c.id === this.currentCard.id);
+      if (curIndex !== -1) {
+        weights[curIndex] = 0; // Prevent direct back-to-back duplicate
+      }
+    }
+
+    const totalWeight = weights.reduce((acc, val) => acc + val, 0);
+    let rand = Math.random() * totalWeight;
+
+    let selected = cards[0];
+    for (let i = 0; i < cards.length; i++) {
+      if (rand < weights[i]) {
+        selected = cards[i];
+        break;
+      }
+      rand -= weights[i];
+    }
+
+    this.currentCard = selected;
+    this.renderCurrentCard();
+  }
+
   renderCurrentCard() {
-    if (!this.activeCards || this.activeCards.length === 0) {
+    if (!this.currentCard) {
       this.cardPromptDisplay.textContent = "No cards";
+      this.cardMasteryLevelDisplay.textContent = "Mastery: 0 / 3";
       return;
     }
 
@@ -98,14 +127,6 @@ class FlashcardStudyApp {
       this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
     }
 
-    if (this.currentIndex >= this.activeCards.length) {
-      this.currentIndex = 0;
-      if (this.shuffleCheckbox.checked) {
-        this.shuffleArray(this.activeCards);
-      }
-    }
-
-    const card = this.activeCards[this.currentIndex];
     this.isAnswerChecked = false;
     this.isRetryMode = false;
 
@@ -113,13 +134,18 @@ class FlashcardStudyApp {
     const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
     this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
-    this.cardPromptDisplay.innerHTML = card.question;
+
+    // Display current card mastery count
+    const cardLevel = window.storage.getCardMasteryLevel(this.currentCard.id);
+    this.cardMasteryLevelDisplay.textContent = `Mastery: ${cardLevel} / 3`;
+
+    this.cardPromptDisplay.innerHTML = this.currentCard.question;
 
     this.answerInput.value = '';
     this.answerInput.disabled = false;
     this.answerInput.placeholder = "Type the answer...";
     this.btnCheck.style.display = 'inline-block';
-    this.btnFeedbackNext.style.display = 'none'; // Hide next button during active typing
+    this.btnFeedbackNext.style.display = 'none';
     this.cardFeedbackBox.classList.remove('active', 'feedback-correct', 'feedback-incorrect');
 
     setTimeout(() => {
@@ -131,16 +157,13 @@ class FlashcardStudyApp {
     const rawInput = this.answerInput.value.trim();
     if (!rawInput) return;
 
-    const card = this.activeCards[this.currentIndex];
+    const card = this.currentCard;
     const isMatch = this.checkAnswerMatch(rawInput, card);
 
     if (this.isRetryMode) {
-      // If user was incorrect previously and is now re-typing the answer:
       if (isMatch) {
-        // Correctly typed the answer after seeing explanation
-        this.advanceToNextCard();
+        this.pickNextSemiRandomCard();
       } else {
-        // Still incorrect on retry
         this.answerInput.value = '';
         this.answerInput.focus();
       }
@@ -158,17 +181,14 @@ class FlashcardStudyApp {
       this.feedbackStatusTitle.innerHTML = '<span>✓</span> Correct!';
       this.feedbackCorrectAnswer.textContent = card.answer;
       this.feedbackExplanation.textContent = card.explanation || '';
-      
+
       this.answerInput.disabled = true;
       this.btnCheck.style.display = 'none';
       this.btnFeedbackNext.style.display = 'inline-block';
       this.btnFeedbackNext.focus();
     } else {
-      // Wrong answer submitted
       window.storage.setCardMastery(card.id, false);
-      this.activeCards.push(card); // Re-queue card to repeat later
-
-      this.isRetryMode = true; // Engage retry requirement
+      this.isRetryMode = true;
 
       this.cardFeedbackBox.classList.add('active', 'feedback-incorrect');
       this.feedbackStatusTitle.innerHTML = '<span>✕</span> Incorrect';
@@ -190,6 +210,10 @@ class FlashcardStudyApp {
     this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
     const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
+
+    // Refresh card mastery level badge
+    const cardLevel = window.storage.getCardMasteryLevel(card.id);
+    this.cardMasteryLevelDisplay.textContent = `Mastery: ${cardLevel} / 3`;
   }
 
   checkAnswerMatch(userInput, card) {
@@ -215,13 +239,11 @@ class FlashcardStudyApp {
   }
 
   advanceToNextCard() {
-    this.currentIndex += 1;
-    this.renderCurrentCard();
+    this.pickNextSemiRandomCard();
   }
 
   skipCurrentCard() {
-    this.currentIndex += 1;
-    this.renderCurrentCard();
+    this.pickNextSemiRandomCard();
   }
 
   renderDecksGrid() {
@@ -269,19 +291,6 @@ class FlashcardStudyApp {
 
     this.btnSkip.addEventListener('click', () => {
       this.skipCurrentCard();
-    });
-
-    this.shuffleCheckbox.addEventListener('change', (e) => {
-      window.storage.saveSettings({ shuffle: e.target.checked });
-      if (this.activeCards.length > 0) {
-        if (e.target.checked) {
-          // Reshuffle remaining card queue
-          const unstudied = this.activeCards.slice(this.currentIndex);
-          this.shuffleArray(unstudied);
-          this.activeCards = [...this.activeCards.slice(0, this.currentIndex), ...unstudied];
-        }
-        this.renderCurrentCard();
-      }
     });
 
     document.addEventListener('keydown', (e) => {
@@ -399,13 +408,6 @@ class FlashcardStudyApp {
     window.storage.saveDeck(newDeck);
     this.closeModal();
     this.loadDeckForStudy(newDeck);
-  }
-
-  shuffleArray(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
   }
 
   escapeHTML(str) {
