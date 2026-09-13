@@ -35,7 +35,6 @@ class StorageManager {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Return saved decks directly to avoid overwriting user updates
           return parsed;
         }
       }
@@ -43,7 +42,6 @@ class StorageManager {
       console.warn('Failed to parse stored decks:', e);
     }
 
-    // Populate local storage with defaults only if empty
     this.saveDecks(defaults);
     return JSON.parse(JSON.stringify(defaults));
   }
@@ -69,31 +67,27 @@ class StorageManager {
     } catch (e) {}
   }
 
-setCardMastery(cardId, isCorrect) {
-  const existing = this.progress[cardId] || { count: 0, mastered: false };
+  setCardMastery(cardId, isCorrect) {
+    const existing = this.progress[cardId] || { count: 0, mastered: false };
 
-  if (isCorrect) {
-    // Increment count on correct answer
-    existing.count = (existing.count || 0) + 1;
+    if (isCorrect) {
+      existing.count = (existing.count || 0) + 1;
+    } else {
+      if (existing.count > 0){
+        existing.count = existing.count - 1;
+      }
+    }
+
+    existing.mastered = existing.count >= 3;
+    existing.timestamp = Date.now();
+
+    this.progress[cardId] = existing;
+    this.saveProgress(this.progress);
   }
-
-  // Set mastered flag strictly when count reaches 3 or more
-  existing.mastered = existing.count >= 3;
-  existing.timestamp = Date.now();
-
-  this.progress[cardId] = existing;
-  this.saveProgress(this.progress);
-}
-
-isCardMastered(cardId) {
-  const entry = this.progress[cardId];
-  // Strictly require count to be at least 3
-  return !!(entry && entry.count >= 3);
-}
 
   isCardMastered(cardId) {
     const entry = this.progress[cardId];
-    return !!(entry && entry.count >= 3);
+    return !!(entry && typeof entry.count === 'number' && entry.count >= 3);
   }
 
   loadStats() {
