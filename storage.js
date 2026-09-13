@@ -73,9 +73,8 @@ class StorageManager {
     if (isCorrect) {
       existing.count = (existing.count || 0) + 1;
     } else {
-      if (existing.count > 0){
-        existing.count = existing.count - 1;
-      }
+      // Decrement by 1 down to a floor of 0
+      existing.count = Math.max(0, (existing.count || 0) - 1);
     }
 
     existing.mastered = existing.count >= 3;
@@ -85,9 +84,13 @@ class StorageManager {
     this.saveProgress(this.progress);
   }
 
-  isCardMastered(cardId) {
+  getCardMasteryLevel(cardId) {
     const entry = this.progress[cardId];
-    return !!(entry && typeof entry.count === 'number' && entry.count >= 3);
+    return entry && typeof entry.count === 'number' ? entry.count : 0;
+  }
+
+  isCardMastered(cardId) {
+    return this.getCardMasteryLevel(cardId) >= 3;
   }
 
   loadStats() {
