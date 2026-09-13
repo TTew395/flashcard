@@ -71,9 +71,10 @@ class StorageManager {
     const existing = this.progress[cardId] || { count: 0, mastered: false };
 
     if (isCorrect) {
-      existing.count = (existing.count || 0) + 1;
+      // Increment up to a maximum cap of 3
+      existing.count = Math.min(3, (existing.count || 0) + 1);
     } else {
-      // Decrement by 1 down to a floor of 0
+      // Decrement by 1 down to a minimum floor of 0
       existing.count = Math.max(0, (existing.count || 0) - 1);
     }
 
