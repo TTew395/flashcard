@@ -18,7 +18,7 @@ class FlashcardStudyApp {
     this.backToStudyBtn = document.getElementById('back-to-study-btn');
     this.deckTitleDisplay = document.getElementById('deck-title-display');
     this.deckMasteredDisplay = document.getElementById('deck-mastered-display');
-    this.scoreDisplay = document.getElementById('score-display');
+    this.attemptsDisplay = document.getElementById('attempts-display');
     this.cardPromptDisplay = document.getElementById('card-prompt-display');
     this.cardMasteryLevelDisplay = document.getElementById('card-mastery-level-display');
     this.answerForm = document.getElementById('answer-form');
@@ -121,7 +121,6 @@ class FlashcardStudyApp {
       rand -= weights[i];
     }
 
-    // Fallback selection if float precision causes empty selection
     if (!selected) {
       selected = cards.find((c, i) => weights[i] > 0);
     }
@@ -136,9 +135,12 @@ class FlashcardStudyApp {
     }
 
     this.deckTitleDisplay.textContent = this.currentDeck ? this.currentDeck.title : '';
-    const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
+    const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck ? this.currentDeck.id : '');
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
-    this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
+    
+    const attempts = this.currentDeck ? window.storage.getDeckAttempts(this.currentDeck.id) : 0;
+    const targetAttempts = total * 3;
+    this.attemptsDisplay.textContent = `Attempts: ${attempts} / ${targetAttempts}`;
 
     // Handle completed deck state
     if (!this.currentCard) {
@@ -176,6 +178,11 @@ class FlashcardStudyApp {
     const rawInput = this.answerInput.value.trim();
     if (!rawInput) return;
 
+    // Increment attempts on each submit/check
+    if (this.currentDeck) {
+      window.storage.incrementDeckAttempts(this.currentDeck.id);
+    }
+
     const card = this.currentCard;
     const isMatch = this.checkAnswerMatch(rawInput, card);
 
@@ -193,7 +200,6 @@ class FlashcardStudyApp {
     this.cardFeedbackBox.classList.remove('feedback-correct', 'feedback-incorrect');
 
     if (isMatch) {
-      window.storage.addScore(1);
       window.storage.setCardMastery(card.id, true);
 
       this.cardFeedbackBox.classList.add('active', 'feedback-correct');
@@ -226,8 +232,11 @@ class FlashcardStudyApp {
       this.currentDeck = window.storage.getDeckById(this.currentDeck.id) || this.currentDeck;
     }
 
-    this.scoreDisplay.textContent = `Score: ${window.storage.getScore()}`;
+    const attempts = window.storage.getDeckAttempts(this.currentDeck.id);
     const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
+    const targetAttempts = total * 3;
+    
+    this.attemptsDisplay.textContent = `Attempts: ${attempts} / ${targetAttempts}`;
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
 
     const cardLevel = window.storage.getCardMasteryLevel(card.id);
