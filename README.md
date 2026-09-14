@@ -19,12 +19,22 @@ A type-to-answer flashcard web app that runs entirely in your browser — no acc
 
 ## How to Use
 
-1. Open the site (or `index.html` locally by double-clicking it)
-2. A deck loads automatically — type your answer in the input field and press **Check** or **Enter**
-3. Feedback appears immediately: green for correct, red for incorrect, with an explanation
-4. Press **Next →** (or Enter) to advance; **Skip →** to skip a card
-5. Toggle **Shuffle** to randomize card order
-6. Click **← All decks** to switch decks
+1. Open the site (or `index.html` locally by double-clicking it).
+2. Choose a deck to begin studying.
+3. Type your answer in the input field and press **Check** or **Enter**.
+4. Feedback appears immediately: green for correct, red for incorrect, with an explanation.
+5. If you answer incorrectly, you must type the correct answer to proceed.
+6. Press **Next →** (or Enter) to advance; **Skip →** to skip a card.
+7. Click **← All decks** to switch decks.
+
+---
+
+## Mastery & Semi-Random Queue System
+
+* **Card Mastery:** Each card has a mastery level ranging from `0 / 3` to `3 / 3`. Correct answers increment mastery (+1 up to 3), while incorrect answers decrement mastery (-1 down to 0).
+* **Semi-Random Queue:** Cards are drawn weighted by their mastery level—unmastered cards appear much more frequently than cards closer to mastery.
+* **Auto-Completion:** Once a card reaches full mastery (`3 / 3`), it is removed from the active study queue. When all cards in a deck are mastered, the deck is marked complete!
+* **Attempts Display:** Displays total attempts relative to target attempts (`Attempts: X / (Deck Cards × 3)`).
 
 ### Keyboard shortcuts
 | Key | Action |
@@ -50,23 +60,3 @@ Alternatively:
 ```bash
 python -m http.server 8000
 # then open http://localhost:8000
-```
-
----
-
-## File Structure
-
-```
-index.html          ← Standalone app (CSS + JS all inlined, open directly in browser)
-js/
-  data.js           ← All deck definitions (edit here to change default decks)
-  storage.js        ← localStorage persistence layer
-  app.js            ← App logic
-  audio.js          ← (stub, audio removed)
-css/
-  styles.css        ← Styles (also inlined in index.html)
-.github/workflows/
-  deploy.yml        ← Auto-deploys to GitHub Pages on push to main
-```
-
-> **Note:** `index.html` is fully self-contained and does not depend on the external `js/` or `css/` files at runtime. Those files exist for development reference. The GitHub Pages deployment serves `index.html` directly.
