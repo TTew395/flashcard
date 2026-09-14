@@ -67,18 +67,37 @@ class StorageManager {
     } catch (e) {}
   }
 
+  getCardTargetMastery(cardId) {
+    const entry = this.progress[cardId];
+    return entry && typeof entry.targetMastery === 'number' ? entry.targetMastery : 3;
+  }
+
   setCardMastery(cardId, isCorrect) {
-    const existing = this.progress[cardId] || { count: 0, mastered: false };
+    const existing = this.progress[cardId] || { 
+      count: 0, 
+      mastered: false, 
+      targetMastery: 3, 
+      incorrectCountThisRun: 0,
+      limitIncreasedThisRun: false 
+    };
+
+    if (typeof existing.targetMastery !== 'number') existing.targetMastery = 3;
+    if (typeof existing.incorrectCountThisRun !== 'number') existing.incorrectCountThisRun = 0;
 
     if (isCorrect) {
-      // Increment up to a maximum cap of 3
-      existing.count = Math.min(3, (existing.count || 0) + 1);
+      existing.count = Math.min(existing.targetMastery, (existing.count || 0) + 1);
     } else {
-      // Decrement by 1 down to a minimum floor of 0
       existing.count = Math.max(0, (existing.count || 0) - 1);
+      existing.incorrectCountThisRun += 1;
+
+      // Increase target limit if below 3, only once per deck run
+      if (existing.targetMastery < 3 && !existing.limitIncreasedThisRun) {
+        existing.targetMastery = Math.min(3, existing.targetMastery + 1);
+        existing.limitIncreasedThisRun = true;
+      }
     }
 
-    existing.mastered = existing.count >= 3;
+    existing.mastered = existing.count >= existing.targetMastery;
     existing.timestamp = Date.now();
 
     this.progress[cardId] = existing;
@@ -91,7 +110,45 @@ class StorageManager {
   }
 
   isCardMastered(cardId) {
-    return this.getCardMasteryLevel(cardId) >= 3;
+    const target = this.getCardTargetMastery(cardId);
+    return this.getCardMasteryLevel(cardId) >= target;
+  }
+
+  resetDeckProgress(deckId) {
+    const deck = this.getDeckById(deckId);
+    if (!deck || !deck.cards) return;
+
+    // Check if whole deck was completed
+    const { mastered, total } = this.getDeckMasteredCount(deckId);
+    const isDeckFullyMastered = total > 0 && mastered === total;
+
+    deck.cards.forEach(card => {
+      const entry = this.progress[card.id] || { targetMastery: 3, incorrectCountThisRun: 0 };
+      let currentTarget = typeof entry.targetMastery === 'number' ? entry.targetMastery : 3;
+      const wrongAttempts = entry.incorrectCountThisRun || 0;
+
+      // Decrement target by 1 if mastered flawlessly without wrong answers
+      if (isDeckFullyMastered && wrongAttempts === 0) {
+        currentTarget = Math.max(1, currentTarget - 1);
+      }
+
+      this.progress[card.id] = {
+        count: 0,
+        mastered: false,
+        targetMastery: currentTarget,
+        incorrectCountThisRun: 0,
+        limitIncreasedThisRun: false,
+        timestamp: Date.now()
+      };
+    });
+
+    this.saveProgress(this.progress);
+
+    // Reset attempt stats for deck
+    if (this.stats.attempts) {
+      this.stats.attempts[deckId] = 0;
+      this.saveStats(this.stats);
+    }
   }
 
   loadStats() {
@@ -121,6 +178,12 @@ class StorageManager {
   getDeckAttempts(deckId) {
     if (!this.stats.attempts) return 0;
     return this.stats.attempts[deckId] || 0;
+  }
+
+  getDeckTotalTargetMasterySum(deckId) {
+    const deck = this.getDeckById(deckId);
+    if (!deck || !deck.cards) return 0;
+    return deck.cards.reduce((sum, card) => sum + this.getCardTargetMastery(card.id), 0);
   }
 
   loadSettings() {
