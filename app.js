@@ -15,6 +15,9 @@ class FlashcardStudyApp {
     this.decksView = document.getElementById('decks-view');
     this.logoBrandBtn = document.getElementById('logo-brand-btn');
     this.allDecksBtn = document.getElementById('all-decks-btn');
+    this.btnResetDeck = document.getElementById('btn-reset-deck');
+    this.btnResetDeckProminent = document.getElementById('btn-reset-deck-prominent');
+    this.deckCompletedWrapper = document.getElementById('deck-completed-wrapper');
     this.backToStudyBtn = document.getElementById('back-to-study-btn');
     this.deckTitleDisplay = document.getElementById('deck-title-display');
     this.deckMasteredDisplay = document.getElementById('deck-mastered-display');
@@ -75,6 +78,13 @@ class FlashcardStudyApp {
     this.renderDecksGrid();
   }
 
+  resetCurrentDeck() {
+    if (!this.currentDeck) return;
+    window.storage.resetDeckProgress(this.currentDeck.id);
+    this.currentCard = null;
+    this.pickNextSemiRandomCard();
+  }
+
   pickNextSemiRandomCard() {
     if (!this.currentDeck || !this.currentDeck.cards || this.currentDeck.cards.length === 0) {
       this.currentCard = null;
@@ -84,23 +94,22 @@ class FlashcardStudyApp {
 
     const cards = this.currentDeck.cards;
     
-    // Filter out fully mastered cards (mastery level >= 3 get weight 0)
+    // Assign weighted probabilities based on distance to card target mastery
     const weights = cards.map(c => {
       const level = window.storage.getCardMasteryLevel(c.id);
-      if (level >= 3) return 0; // Exclude fully mastered cards
-      return 4 - level; // Level 0 = weight 4, Level 1 = weight 3, Level 2 = weight 2
+      const target = window.storage.getCardTargetMastery(c.id);
+      if (level >= target) return 0; // Exclude mastered cards
+      return Math.max(1, (target - level) + 1);
     });
 
     const unmasteredCount = weights.filter(w => w > 0).length;
 
-    // Zero unmastered cards remaining -> Deck Completed
     if (unmasteredCount === 0) {
       this.currentCard = null;
       this.renderCurrentCard();
       return;
     }
 
-    // If more than 1 unmastered card exists, prevent direct consecutive repeat
     if (unmasteredCount > 1 && this.currentCard) {
       const curIndex = cards.findIndex(c => c.id === this.currentCard.id);
       if (curIndex !== -1) {
@@ -139,19 +148,22 @@ class FlashcardStudyApp {
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
     
     const attempts = this.currentDeck ? window.storage.getDeckAttempts(this.currentDeck.id) : 0;
-    const targetAttempts = total * 3;
+    const targetAttempts = this.currentDeck ? window.storage.getDeckTotalTargetMasterySum(this.currentDeck.id) : 0;
     this.attemptsDisplay.textContent = `Attempts: ${attempts} / ${targetAttempts}`;
 
-    // Handle completed deck state
+    // Completed deck state
     if (!this.currentCard) {
       this.cardPromptDisplay.textContent = "🎉 All cards in this deck are mastered!";
-      this.cardMasteryLevelDisplay.textContent = "Mastery: 3 / 3";
+      this.cardMasteryLevelDisplay.textContent = "Mastery: Complete";
       this.answerForm.style.display = 'none';
       this.btnSkip.style.display = 'none';
       this.cardFeedbackBox.classList.remove('active');
+      
+      this.deckCompletedWrapper.style.display = 'flex';
       return;
     }
 
+    this.deckCompletedWrapper.style.display = 'none';
     this.answerForm.style.display = 'flex';
     this.btnSkip.style.display = 'inline-block';
 
@@ -159,7 +171,8 @@ class FlashcardStudyApp {
     this.isRetryMode = false;
 
     const cardLevel = window.storage.getCardMasteryLevel(this.currentCard.id);
-    this.cardMasteryLevelDisplay.textContent = `Mastery: ${cardLevel} / 3`;
+    const cardTarget = window.storage.getCardTargetMastery(this.currentCard.id);
+    this.cardMasteryLevelDisplay.textContent = `Mastery: ${cardLevel} / ${cardTarget}`;
     this.cardPromptDisplay.innerHTML = this.currentCard.question;
 
     this.answerInput.value = '';
@@ -178,7 +191,6 @@ class FlashcardStudyApp {
     const rawInput = this.answerInput.value.trim();
     if (!rawInput) return;
 
-    // Increment attempts on each submit/check
     if (this.currentDeck) {
       window.storage.incrementDeckAttempts(this.currentDeck.id);
     }
@@ -234,13 +246,14 @@ class FlashcardStudyApp {
 
     const attempts = window.storage.getDeckAttempts(this.currentDeck.id);
     const { mastered, total } = window.storage.getDeckMasteredCount(this.currentDeck.id);
-    const targetAttempts = total * 3;
+    const targetAttempts = window.storage.getDeckTotalTargetMasterySum(this.currentDeck.id);
     
     this.attemptsDisplay.textContent = `Attempts: ${attempts} / ${targetAttempts}`;
     this.deckMasteredDisplay.textContent = `${mastered} / ${total} mastered`;
 
     const cardLevel = window.storage.getCardMasteryLevel(card.id);
-    this.cardMasteryLevelDisplay.textContent = `Mastery: ${cardLevel} / 3`;
+    const cardTarget = window.storage.getCardTargetMastery(card.id);
+    this.cardMasteryLevelDisplay.textContent = `Mastery: ${cardLevel} / ${cardTarget}`;
   }
 
   checkAnswerMatch(userInput, card) {
@@ -306,6 +319,16 @@ class FlashcardStudyApp {
     this.allDecksBtn.addEventListener('click', () => this.showDecksView());
     this.backToStudyBtn.addEventListener('click', () => this.showStudyView());
     this.logoBrandBtn.addEventListener('click', () => this.showStudyView());
+
+    this.btnResetDeck.addEventListener('click', () => {
+      if (confirm('Reset progress for this deck? All card masteries and attempt counts for this deck will return to 0.')) {
+        this.resetCurrentDeck();
+      }
+    });
+
+    this.btnResetDeckProminent.addEventListener('click', () => {
+      this.resetCurrentDeck();
+    });
 
     this.answerForm.addEventListener('submit', (e) => {
       e.preventDefault();
