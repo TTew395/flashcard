@@ -99,7 +99,7 @@ class StorageManager {
       const stored = localStorage.getItem(STORAGE_KEYS.STATS);
       if (stored) return JSON.parse(stored);
     } catch (e) {}
-    return { score: 0, totalAnswered: 0, totalCorrect: 0 };
+    return { attempts: {} };
   }
 
   saveStats(stats) {
@@ -109,20 +109,18 @@ class StorageManager {
     } catch (e) {}
   }
 
-  addScore(points) {
-    this.stats.score = Math.max(0, (this.stats.score || 0) + points);
+  incrementDeckAttempts(deckId) {
+    if (!this.stats.attempts) {
+      this.stats.attempts = {};
+    }
+    this.stats.attempts[deckId] = (this.stats.attempts[deckId] || 0) + 1;
     this.saveStats(this.stats);
-    return this.stats.score;
+    return this.stats.attempts[deckId];
   }
 
-  getScore() {
-    return this.stats.score || 0;
-  }
-
-  resetScore() {
-    this.stats.score = 0;
-    this.saveStats(this.stats);
-    return 0;
+  getDeckAttempts(deckId) {
+    if (!this.stats.attempts) return 0;
+    return this.stats.attempts[deckId] || 0;
   }
 
   loadSettings() {
