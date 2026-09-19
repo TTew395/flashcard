@@ -30,20 +30,50 @@ class StorageManager {
   }
 
   loadDecks(defaults) {
+    let storedDecks = [];
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.DECKS);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          storedDecks = parsed;
         }
       }
     } catch (e) {
       console.warn('Failed to parse stored decks:', e);
     }
 
-    this.saveDecks(defaults);
-    return JSON.parse(JSON.stringify(defaults));
+    // If local storage is empty, initialize directly with defaults
+    if (storedDecks.length === 0) {
+      this.saveDecks(defaults);
+      return JSON.parse(JSON.stringify(defaults));
+    }
+
+    // Merge strategy: update/add default decks while keeping user-created decks
+    const defaultIds = new Set(defaults.map(d => d.id));
+    
+    // Map defaults for easy lookup
+    const defaultDeckMap = new Map(defaults.map(d => [d.id, d]));
+
+    // Rebuild decks array ensuring data.json decks are updated to latest version
+    const mergedDecks = storedDecks.map(storedDeck => {
+      if (defaultDeckMap.has(storedDeck.id)) {
+        // Update content from data.json for matching default deck ID
+        return defaultDeckMap.get(storedDeck.id);
+      }
+      // Preserve custom user-created deck
+      return storedDeck;
+    });
+
+    // Append any newly added default decks from data.json that aren't stored yet
+    defaults.forEach(defaultDeck => {
+      if (!storedDecks.some(d => d.id === defaultDeck.id)) {
+        mergedDecks.push(defaultDeck);
+      }
+    });
+
+    this.saveDecks(mergedDecks);
+    return mergedDecks;
   }
 
   saveDecks(decks) {
