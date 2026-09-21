@@ -260,7 +260,7 @@ class FlashcardStudyApp {
     const normalize = (str) => {
       return (str || '')
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
+        .replace(/[^\p{L}\p{N}]/gu, '') // Supports Unicode characters including Japanese (Hiragana, Katakana, Kanji)
         .trim();
     };
 
