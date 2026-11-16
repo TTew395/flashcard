@@ -270,7 +270,7 @@
       { "id": "2kj-48", "question": "島、しま", "answer": "shima", "aliases": [""], "explanation": "shima, \"island\", kanji." },
       { "id": "2kj-49", "question": "紙、かみ", "answer": "kami", "aliases": [""], "explanation": "kami, \"paper\", kanji." },
       { "id": "2kj-50", "question": "鉛筆、えんぴつ", "answer": "enpitsu", "aliases": [""], "explanation": "enpitsu, \"pencil\", kanji." },
-      { "id": "2kj-51", "question": "消しゴム、けしごむ", "answer": "keshigomu", "aliases": [""], "explanation": "keshigomu, \"eraser\", kanji." },
+      { "id": "2kj-51", "question": "消しゴム、けしごむ", "answer": "keshigomu", "aliases": [""], "explanation": "keshigomu, \"eraser\", kanji." }
     ]
   },
     {
