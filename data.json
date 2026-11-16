@@ -247,7 +247,7 @@
       { "id": "2kj-25", "question": "一、いち", "answer": "ichi", "aliases": [""], "explanation": "ichi, \"one\", kanji." },
       { "id": "2kj-26", "question": "二、に", "answer": "ni", "aliases": [""], "explanation": "ni, \"two\", kanji." },
       { "id": "2kj-27", "question": "三、さん", "answer": "san", "aliases": [""], "explanation": "san, \"three\", kanji." },
-      { "id": "2kj-28", "question": "四、し、よん," "answer": "shi", "aliases": ["yon"], "explanation": "shi or yon, \"four\", kanji." },
+      { "id": "2kj-28", "question": "四、し、よん", "answer": "shi", "aliases": ["yon"], "explanation": "shi or yon, \"four\", kanji." },
       { "id": "2kj-29", "question": "五、ご", "answer": "go", "aliases": [""], "explanation": "go, \"five\", kanji." },
       { "id": "2kj-30", "question": "六、ろく", "answer": "roku", "aliases": [""], "explanation": "roku, \"six\", kanji." },
       { "id": "2kj-31", "question": "七、しち、なな", "answer": "shichi", "aliases": ["nana"], "explanation": "shichi or nana, \"seven\", kanji." },
