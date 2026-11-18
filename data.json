@@ -368,7 +368,7 @@
       { "id": "3kj-36", "question": "はい", "answer": "hai", "aliases": [""], "explanation": "hai, \"yes\", kanji." },
       { "id": "3kj-37", "question": "そう", "answer": "sou", "aliases": [""], "explanation": "sou, \"yeah; right\", kanji." },
       { "id": "3kj-38", "question": "いいとも", "answer": "iitomo", "aliases": [""], "explanation": "iitomo, \"sounds good\", kanji." },
-      { "id": "3kj-39", "question": "大丈夫、だいじょうぶ", "daijoubu": "koori", "aliases": [""], "explanation": "daijoubu, \"ok\", kanji." }
+      { "id": "3kj-39", "question": "大丈夫、だいじょうぶ", "answer": "daijoubu", "aliases": [""], "explanation": "daijoubu, \"ok\", kanji." }
     ]
   },
   {
